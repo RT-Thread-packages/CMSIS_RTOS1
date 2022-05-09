@@ -9,13 +9,22 @@
  */
 
 #include <rtthread.h>
+#include <rtdbg.h>
 #include "cmsis_os.h"
 
 #define DEFAULT_TICK (5)
 #define DEFAULT_THREAD_STACK_SIZE (512)
+#define SIGNAL_ERROR_CODE (0x80000000)
 
 #define CMSIS_MEM_ALLOC(_size) rt_malloc(_size)
 #define CMSIS_MEM_FREE(_ptr) rt_free(_ptr)
+
+#define DBG_TAG "cmsis_rtos1"
+#ifdef PKG_USING_CMSIS_RTOS1_DBG
+#define DBG_LVL DBG_LOG
+#else
+#define DBG_LVL DBG_INFO
+#endif
 
 /* cmsis to rt-thread priority map */
 static const rt_uint8_t priorityArrayMap[7] =
@@ -222,7 +231,7 @@ osThreadId osThreadCreate(const osThreadDef_t *thread_def, void *argument)
 
     return thread_cb;
 thread_create_failed:
-    rt_kprintf("CMSIS RTOS1 %s failed\r\n", __func__);
+    LOG_E("CMSIS RTOS1 %s failed", __func__);
     if (thread_cb)
     {
         if (thread_cb->thread_id)
@@ -271,7 +280,7 @@ osStatus osThreadTerminate(osThreadId thread_id)
 
     return osOK;
 thread_terminate_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__, status);
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__, status);
     return status;
 }
 
@@ -362,7 +371,7 @@ osStatus osThreadSetPriority(osThreadId thread_id, osPriority priority)
 
     return osOK;
 set_pri_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__, status);
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__, status);
     return status;
 }
 
@@ -390,7 +399,7 @@ osPriority osThreadGetPriority(osThreadId thread_id)
 
     return makeCmsisPriority(thread->current_priority);
 get_pri_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__);
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__);
     return osPriorityError;
 }
 
@@ -418,7 +427,15 @@ osStatus osDelay(uint32_t millisec)
  * @retval  event that contains signal, message, or mail information or error code.
  * @note   MUST REMAIN UNCHANGED: \b osWait shall be consistent in every CMSIS-RTOS.
  */
-osEvent osWait(uint32_t millisec);
+osEvent osWait(uint32_t millisec)
+{
+    osEvent event;
+
+    event.status = osErrorOS;
+    LOG_E("CMSIS RTOS1 %s failed. this function not implement", __func__);
+
+    return event;
+}
 
 #endif /* Generic Wait available */
 
@@ -467,7 +484,7 @@ osTimerId osTimerCreate(const osTimerDef_t *timer_def, os_timer_type type, void 
     return (osTimerId)timer;
 
 timer_create_error:
-    rt_kprintf("CMSIS RTOS1 %s failed\r\n", __func__);
+    LOG_E("CMSIS RTOS1 %s failed", __func__);
     return RT_NULL;
 }
 
@@ -515,7 +532,7 @@ osStatus osTimerStart(osTimerId timer_id, uint32_t millisec)
 
     return osOK;
 timer_start_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__, status);
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__, status);
     return status;
 }
 
@@ -562,7 +579,7 @@ osStatus osTimerStop(osTimerId timer_id)
 
     return osOK;
 timer_stop_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__, status);
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__, status);
     return status;
 }
 
@@ -600,7 +617,7 @@ osStatus osTimerDelete(osTimerId timer_id)
 
     return osOK;
 timer_delete_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__, status);
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__, status);
     return status;
 }
 
@@ -615,7 +632,7 @@ timer_delete_error:
 int32_t osSignalSet(osThreadId thread_id, int32_t signal)
 {
     rt_event_t event;
-    int32_t ret = 0x80000000;
+    int32_t ret = SIGNAL_ERROR_CODE;
     rt_err_t result;
 
     if (RT_NULL == thread_id)
@@ -631,14 +648,14 @@ int32_t osSignalSet(osThreadId thread_id, int32_t signal)
     result = rt_event_send(event, signal);
     if (RT_EOK != result)
     {
-        ret = 0x80000000;
+        ret = SIGNAL_ERROR_CODE;
         goto signal_set_error;
     }
 
     return ret;
 signal_set_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__, ret);
-    return 0x80000000;
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__, ret);
+    return SIGNAL_ERROR_CODE;
 }
 /**
  * @brief  Clear the specified Signal Flags of an active thread.
@@ -650,7 +667,7 @@ signal_set_error:
 int32_t osSignalClear(osThreadId thread_id, int32_t signal)
 {
     rt_event_t event;
-    int32_t ret = 0x80000000;
+    int32_t ret = SIGNAL_ERROR_CODE;
 
     if (RT_NULL == thread_id)
         goto signal_clear_error;
@@ -670,8 +687,8 @@ int32_t osSignalClear(osThreadId thread_id, int32_t signal)
 
     return ret;
 signal_clear_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__, ret);
-    return 0x80000000;
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__, ret);
+    return SIGNAL_ERROR_CODE;
 }
 
 /**
@@ -726,7 +743,7 @@ osEvent osSignalWait(int32_t signals, uint32_t millisec)
     event.status = osEventSignal;
     return event;
 signal_wait_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__, event.status);
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__, event.status);
     return event;
 }
 
@@ -755,7 +772,7 @@ osMutexId osMutexCreate(const osMutexDef_t *mutex_def)
 
     return (osMutexId)mutex;
 mutex_create_failed:
-    rt_kprintf("CMSIS RTOS1 %s failed\r\n", __func__);
+    LOG_E("CMSIS RTOS1 %s failed", __func__);
     return RT_NULL;
 #else  /* not define RT_USING_MUTEX */
     return RT_NULL;
@@ -824,7 +841,7 @@ osStatus osMutexWait(osMutexId mutex_id, uint32_t millisec)
 
     return osOK;
 mutex_wait_error:
-    rt_kprintf("CMSIS RTOS1 %s failed\r\n", __func__);
+    LOG_E("CMSIS RTOS1 %s failed", __func__);
     return status;
 }
 
@@ -869,7 +886,7 @@ osStatus osMutexRelease(osMutexId mutex_id)
 
     return osOK;
 mutex_release_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__, status);
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__, status);
     return status;
 }
 
@@ -914,7 +931,7 @@ osStatus osMutexDelete(osMutexId mutex_id)
 
     return osOK;
 mutex_delete_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is :%d\r\n", __func__, status);
+    LOG_E("CMSIS RTOS1 %s failed error code is :%d", __func__, status);
     return status;
 }
 
@@ -949,7 +966,7 @@ osSemaphoreId osSemaphoreCreate(const osSemaphoreDef_t *semaphore_def, int32_t c
 
     return (osSemaphoreId)sem;
 sem_create_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error", __func__);
+    LOG_E("CMSIS RTOS1 %s failed error", __func__);
     return RT_NULL;
 #else  /* not defined RT_USING_SEMAPHORE */
     return RT_NULL;
@@ -999,7 +1016,7 @@ int32_t osSemaphoreWait(osSemaphoreId semaphore_id, uint32_t millisec)
 
     return _osSemaphoreGetCount(semaphore_id);
 sem_take_error:
-    rt_kprintf("CMSIS RTOS1 %s failed \r\n", __func__);
+    LOG_E("CMSIS RTOS1 %s failed ", __func__);
     return 0; /* If 0 is returned, then no semaphore was available. */
 }
 
@@ -1037,7 +1054,7 @@ osStatus osSemaphoreRelease(osSemaphoreId semaphore_id)
 
     return osOK;
 sem_release_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__, status);
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__, status);
     return status;
 }
 
@@ -1082,7 +1099,7 @@ osStatus osSemaphoreDelete(osSemaphoreId semaphore_id)
 
     return osOK;
 sem_delete_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__, status);
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__, status);
     return status;
 }
 #endif /* Use Semaphores */
@@ -1119,7 +1136,7 @@ osPoolId osPoolCreate(const osPoolDef_t *pool_def)
 
     return (osPoolId)mempool;
 mp_create_error:
-    rt_kprintf("CMSIS RTOS1 %s failed\r\n", __func__);
+    LOG_E("CMSIS RTOS1 %s failed", __func__);
     return RT_NULL;
 }
 
@@ -1182,7 +1199,7 @@ osStatus osPoolFree(osPoolId pool_id, void *block)
 
     return osOK;
 pool_free_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__, status);
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__, status);
     return status;
 }
 #endif /* Use Memory Pool Management */
@@ -1220,7 +1237,7 @@ osMessageQId osMessageCreate(const osMessageQDef_t *queue_def, osThreadId thread
 
     return (osMessageQId)mailbox;
 message_create_error:
-    rt_kprintf("CMSIS RTOS1 %s failed \r\n", __func__);
+    LOG_E("CMSIS RTOS1 %s failed", __func__);
     return RT_NULL;
 #else  /* RT_USING_MAILBOX */
     return RT_NULL;
@@ -1255,7 +1272,7 @@ osStatus osMessagePut(osMessageQId queue_id, uint32_t info, uint32_t millisec)
 
     /* when millisec is 0, the function returns instantly */
     if (0 == millisec)
-        result = rt_mb_urgent(mb_cb, info);
+        result = rt_mb_send(mb_cb, info);
     else
         result = rt_mb_send_wait(mb_cb, info, ticks);
 
@@ -1279,7 +1296,7 @@ osStatus osMessagePut(osMessageQId queue_id, uint32_t info, uint32_t millisec)
 
     return osOK;
 message_put_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__, status);
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__, status);
     return status;
 }
 /**
@@ -1327,7 +1344,7 @@ osEvent osMessageGet(osMessageQId queue_id, uint32_t millisec)
     event.status = osEventMessage;
     return event;
 message_get_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__, event.status);
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__, event.status);
     return event;
 }
 #endif /* Use Message Queues */
@@ -1383,7 +1400,7 @@ mail_create_failed:
         rt_mp_delete(ptr->mp_id);
     if (RT_NULL != ptr->mb_id)
         rt_mb_delete(ptr->mb_id);
-    rt_kprintf("CMSIS RTOS1 %s failed\r\n", __func__);
+    LOG_E("CMSIS RTOS1 %s failed", __func__);
     return RT_NULL;
 #else  /* RT_USING_MEMPOOL && RT_USING_MAILBOX */
     return RT_NULL;
@@ -1417,7 +1434,7 @@ void *osMailAlloc(osMailQId queue_id, uint32_t millisec)
 
     return ret;
 mail_alloc_error:
-    rt_kprintf("CMSIS RTOS1 %s failed\r\n", __func__);
+    LOG_E("CMSIS RTOS1 %s failed", __func__);
     return RT_NULL;
 }
 
@@ -1471,7 +1488,7 @@ osStatus osMailPut(osMailQId queue_id, void *mail)
 
     return osOK;
 mail_put_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__, status);
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__, status);
     return status;
 }
 
@@ -1517,7 +1534,7 @@ osEvent osMailGet(osMailQId queue_id, uint32_t millisec)
     event.status = osEventMail;
     return event;
 mail_get_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__, event.status);
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__, event.status);
     return event;
 }
 
@@ -1550,7 +1567,7 @@ osStatus osMailFree(osMailQId queue_id, void *mail)
 
     return osOK;
 mail_free_error:
-    rt_kprintf("CMSIS RTOS1 %s failed error code is : 0x%x\r\n", __func__, status);
+    LOG_E("CMSIS RTOS1 %s failed error code is : 0x%x", __func__, status);
     return status;
 }
 #endif /* Use Mail Queues */
